@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
 using Quartz.Impl.AdoJobStore;
 using Quartz.Impl.Matchers;
 using Quartz.Impl.Triggers;
@@ -172,28 +172,49 @@ namespace Quartz.Spi.CosmosDbJobStore
         {           
             _schedulerSignaler = signaler;
 
-            var serializerSettings = new InheritedJsonObjectSerializer();
-            var documentClient = new DocumentClient(new Uri(Endpoint), Key, serializerSettings.CreateSerializerSettings(), new ConnectionPolicy
+            var documentClient = new CosmosClient(Endpoint, Key, new CosmosClientOptions
             {
                 ConnectionMode = ConnectionMode.Direct,
-                ConnectionProtocol = Protocol.Tcp,
                 RequestTimeout = TimeSpan.FromSeconds(30),
-                MaxConnectionLimit = 10,
-                RetryOptions = new RetryOptions
-                {
-                    MaxRetryWaitTimeInSeconds = 3,
-                    MaxRetryAttemptsOnThrottledRequests = 10
-                }
+                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(3),
+                MaxRetryAttemptsOnRateLimitedRequests = 10,
+                Serializer = new QuartzCosmosSerializer()
             }); // TODO Configurable
+
+            await EnsureInitialized(documentClient, DatabaseId, CollectionId); // All repositories uses one collection
             
-            _lockManager = new LockManager(new LockRepository(documentClient, DatabaseId, CollectionId, InstanceName), InstanceName, InstanceId, LockTtlSeconds);
-            _calendarRepository = new CalendarRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            _triggerRepository = new TriggerRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            _jobRepository = new JobRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            _schedulerRepository = new SchedulerRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            _firedTriggerRepository = new FiredTriggerRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            _pausedTriggerGroupRepository = new PausedTriggerGroupRepository(documentClient, DatabaseId, CollectionId, InstanceName);
-            await _schedulerRepository.EnsureInitialized(); // All repositories uses one collection
+            var container = documentClient.GetContainer(DatabaseId, CollectionId);
+            
+            _lockManager = new LockManager(new LockRepository(container, InstanceName), InstanceName, InstanceId, LockTtlSeconds);
+            _calendarRepository = new CalendarRepository(container, InstanceName);
+            _triggerRepository = new TriggerRepository(container, InstanceName);
+            _jobRepository = new JobRepository(container, InstanceName);
+            _schedulerRepository = new SchedulerRepository(container, InstanceName);
+            _firedTriggerRepository = new FiredTriggerRepository(container, InstanceName);
+            _pausedTriggerGroupRepository = new PausedTriggerGroupRepository(container, InstanceName);
+            
+        }
+        
+        public async Task EnsureInitialized(CosmosClient client, string databaseId, string containerId)
+        {
+            await client.GetDatabase(databaseId).CreateContainerIfNotExistsAsync(new ContainerProperties
+            {
+                Id = containerId,
+                PartitionKeyPath = "/instanceName",
+                DefaultTimeToLive = -1,
+                IndexingPolicy =
+                {
+                    IndexingMode = IndexingMode.Consistent,
+                    Automatic = true,
+                    IncludedPaths =
+                    {
+                        new IncludedPath
+                        {
+                            Path = "/*"
+                        }
+                    }
+                }
+            });
         }
         
 

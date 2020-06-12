@@ -2,15 +2,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
+using Microsoft.Azure.Cosmos;
 using Quartz.Spi.CosmosDbJobStore.Entities;
 
 namespace Quartz.Spi.CosmosDbJobStore.Repositories
 {
     public class LockRepository : CosmosDbRepositoryBase<PersistentLock>
     {
-        public LockRepository(IDocumentClient documentClient, string databaseId, string collectionId, string instanceName) 
-            : base(documentClient, databaseId, collectionId, PersistentLock.EntityType, instanceName)
+        public LockRepository(Container container, string instanceName) 
+            : base(container, PersistentLock.EntityType, instanceName)
         {
         }
 
@@ -18,34 +18,25 @@ namespace Quartz.Spi.CosmosDbJobStore.Repositories
         {
             try
             {
-                await _documentClient.CreateDocumentAsync(_collectionUri, lck, CreateRequestOptions(), true);
+                await _container.CreateItemAsync(lck, GetPartitionKey());
                 return true;
             }
-            catch (DocumentClientException e) when (e.StatusCode == HttpStatusCode.Conflict)
+            catch (CosmosException e) when (e.StatusCode == HttpStatusCode.Conflict)
             {
                 return false;
             }
         }
 
-        public async Task<bool> TryDelete(string lockId)
+        public Task<bool> TryDelete(string lockId)
         {
-            try
-            {
-                await _documentClient.DeleteDocumentAsync(CreateDocumentUri(lockId), CreateRequestOptions());
-                return true;
-            }
-            catch (DocumentClientException e) when (e.StatusCode == HttpStatusCode.NotFound)
-            {
-                return false;
-            }
+            return Delete(lockId);
         }
         
         public Task<IList<PersistentLock>> GetAllByInstanceId(string instanceId)
         {
-            return Task.FromResult<IList<PersistentLock>>(_documentClient
-                .CreateDocumentQuery<PersistentLock>(_collectionUri, CreateFeedOptions())
+            return Task.FromResult<IList<PersistentLock>>(_container
+                .GetItemLinqQueryable<PersistentLock>(true, null, GetRequestOptions())
                 .Where(x => x.Type == _type && x.InstanceName == _instanceName && x.InstanceId == instanceId)
-                .AsEnumerable()
                 .ToList());
         }
     }

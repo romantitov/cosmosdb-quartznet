@@ -18,10 +18,10 @@ namespace Quartz.Spi.CosmosDbJobStore.Tests
                 [HackedStdSchedulerFactory.PropertySchedulerInstanceName] = instanceName,
                 [HackedStdSchedulerFactory.PropertySchedulerInstanceId] = $"{Environment.MachineName}-{Guid.NewGuid()}",
                 [HackedStdSchedulerFactory.PropertyJobStoreType] = typeof(CosmosDbJobStore).AssemblyQualifiedName,
-                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.Endpoint"] = "https://localhost:8081/",
-                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.Key"] = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
-                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.DatabaseId"] = "quartz-demo",
-                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.CollectionId"] = "Quartz",
+                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.Endpoint"] = "https://notificationsdev.documents.azure.com:443/",
+                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.Key"] = "Nl0t3U9hGO57Zf271Vew7k7cFwjDNiWytrf5IWurK2tR6t9JFTIbD8VXehOoQCvoOIYZ9ukQOm2MmTSfHpqhFg==",
+                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.DatabaseId"] = "notificationservice",
+                [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.CollectionId"] = "Quartzzz",
                 [$"{HackedStdSchedulerFactory.PropertyJobStorePrefix}.Clustered"] = "true"
             };
 

@@ -1,11 +1,10 @@
 using System;
-using Microsoft.Azure.Documents;
 
 namespace Quartz.Spi.CosmosDbJobStore.Entities
 {
     public class TriggerFactory
     {
-        internal static PersistentTriggerBase CreateTrigger(ITrigger trigger, Entities.PersistentTriggerState state, string instanceName)
+        internal static PersistentTriggerBase CreateTrigger(ITrigger trigger, PersistentTriggerState state, string instanceName)
         {
             if (trigger is ICronTrigger cronTrigger)
             {
